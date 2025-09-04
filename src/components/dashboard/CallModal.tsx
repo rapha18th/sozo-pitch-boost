@@ -111,24 +111,30 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
     stopSession();
     setCallState('ended');
 
-    if (callBeganRef.current && user) {
-      const durationSeconds = Math.round((Date.now() - callBeganRef.current) / 1000);
-      if (durationSeconds > 0) {
-        const transcript = conversationMessages
-          .map(msg => `[${new Date(msg.timestamp).toLocaleTimeString()}] ${msg.author}: ${msg.text}`)
-          .join('\n');
+    try {
+      if (callBeganRef.current && user) {
+        const durationSeconds = Math.round((Date.now() - callBeganRef.current) / 1000);
+        if (durationSeconds > 0) {
+          const transcript = conversationMessages
+            .map(msg => `[${new Date(msg.timestamp).toLocaleTimeString()}] ${msg.author}: ${msg.text}`)
+            .join('\n');
 
-        const token = await user.getIdToken();
-        await apiClient.endSession(token, projectId, { durationSeconds, transcript });
+          const token = await user.getIdToken();
+          await apiClient.endSession(token, projectId, { durationSeconds, transcript });
 
-        const profile = await apiClient.getUserProfile(token);
-        setProfile(profile);
+          const profile = await apiClient.getUserProfile(token);
+          setProfile(profile);
+        }
       }
+    } catch (error) {
+      console.error("Failed to save session:", error);
+      alert("There was an error saving your session. Your credits were not deducted.");
+    } finally {
+      setConversationMessages([]);
+      callBeganRef.current = null;
+      setCallState('idle');
+      onClose();
     }
-
-    setConversationMessages([]);
-    callBeganRef.current = null;
-    onClose();
   }, [user, projectId, conversationMessages, stopSession, onClose, setProfile]);
 
   useEffect(() => {
