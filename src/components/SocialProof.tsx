@@ -1,29 +1,6 @@
-import { Star, Users, Award, Clock } from "lucide-react";
+import { Star } from "lucide-react";
 
 const SocialProof = () => {
-  const stats = [
-    {
-      icon: <Users className="h-6 w-6 text-soft-sky" />,
-      number: "10,000+",
-      label: "Active Users"
-    },
-    {
-      icon: <Award className="h-6 w-6 text-soft-sky" />,
-      number: "95%",
-      label: "Success Rate"  
-    },
-    {
-      icon: <Clock className="h-6 w-6 text-soft-sky" />,
-      number: "50,000+",
-      label: "Practice Sessions"
-    },
-    {
-      icon: <Star className="h-6 w-6 text-soft-sky" />,
-      number: "4.9/5",
-      label: "User Rating"
-    }
-  ];
-
   const testimonials = [
     {
       quote: "Sozo helped me land my dream job at Google. The AI feedback was incredibly detailed and actionable.",
@@ -48,23 +25,6 @@ const SocialProof = () => {
   return (
     <section className="py-20 bg-warm-grey">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 mb-20">
-          {stats.map((stat, index) => (
-            <div key={index} className="text-center">
-              <div className="flex justify-center mb-3">
-                {stat.icon}
-              </div>
-              <div className="text-3xl font-bold text-deep-navy mb-2">
-                {stat.number}
-              </div>
-              <div className="text-muted-foreground font-medium">
-                {stat.label}
-              </div>
-            </div>
-          ))}
-        </div>
-
         {/* Testimonials */}
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-deep-navy mb-4">
