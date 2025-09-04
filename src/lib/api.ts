@@ -44,7 +44,7 @@ class ApiClient {
     return response.json();
   }
 
-  async socialSignIn(token: string): Promise<UserProfile> {
+  async syncProfile(token: string): Promise<UserProfile> {
     const response = await fetch(`${BASE_URL}/api/auth/social-signin`, {
       method: 'POST',
       headers: this.getAuthHeaders(token),
@@ -52,7 +52,7 @@ class ApiClient {
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(error || 'Social sign in failed');
+      throw new Error(error || 'Failed to sync user profile');
     }
 
     return response.json();

@@ -71,7 +71,7 @@ const SignUp = () => {
       const token = await userCredential.user.getIdToken();
       
       // Create user profile via API
-      const profile = await apiClient.signUp(formData, token);
+      const profile = await apiClient.syncProfile(token);
       
       setProfile(profile);
       toast({
@@ -99,7 +99,7 @@ const SignUp = () => {
       const result = await signInWithPopup(auth, googleProvider);
       const token = await result.user.getIdToken();
       
-      const profile = await apiClient.socialSignIn(token);
+      const profile = await apiClient.syncProfile(token);
       
       setProfile(profile);
       toast({

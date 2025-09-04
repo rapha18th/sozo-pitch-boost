@@ -99,7 +99,7 @@ const SignIn = () => {
       const result = await signInWithPopup(auth, googleProvider);
       const token = await result.user.getIdToken();
       
-      const profile = await apiClient.socialSignIn(token);
+      const profile = await apiClient.syncProfile(token);
       
       setProfile(profile);
       toast({
