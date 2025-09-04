@@ -13,8 +13,11 @@ interface CallModalProps {
   project: Project | null;
 }
 
+type CallState = 'idle' | 'connecting' | 'connected' | 'ended';
+
 const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, project }) => {
   const { user, profile: userProfile, setProfile } = useAuth();
+  const [callState, setCallState] = useState<CallState>('idle');
   const [conversationMessages, setConversationMessages] = useState<any[]>([]);
   const callBeganRef = useRef<number | null>(null);
 
@@ -30,6 +33,7 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
     agentId: 'agent_2201k4ant3h5fmdshkhnpary29wp',
     onConnect: () => {
       callBeganRef.current = Date.now();
+      setCallState('connected');
     },
     onMessage: (message) => {
       const newMessage = { ...message, timestamp: new Date().toISOString() };
@@ -57,18 +61,22 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
   };
 
   const startCall = async () => {
+    setCallState('connecting');
     if (!user || !userProfile || !project) {
       console.error("Missing user, profile, or project info");
+      setCallState('idle');
       return;
     }
     if (userProfile.credits < 3) {
       alert("You need at least 3 credits to start a call.");
+      setCallState('idle');
       return;
     }
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (err) {
       alert("Microphone access is required to start the practice session.");
+      setCallState('idle');
       return;
     }
 
@@ -88,20 +96,34 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
     startSession({ dynamicVariables: vars });
   };
 
-  const hangUp = useCallback(async () => {
+  const handleClose = useCallback(() => {
+    if (callState === 'connected') {
+      stopSession();
+      // No need to save session if user just closes modal
+    }
+    setConversationMessages([]);
+    callBeganRef.current = null;
+    setCallState('idle');
+    onClose();
+  }, [callState, stopSession, onClose]);
+
+  const hangUpAndSave = useCallback(async () => {
     stopSession();
+    setCallState('ended');
 
     if (callBeganRef.current && user) {
       const durationSeconds = Math.round((Date.now() - callBeganRef.current) / 1000);
-      const transcript = conversationMessages
-        .map(msg => `[${new Date(msg.timestamp).toLocaleTimeString()}] ${msg.author}: ${msg.text}`)
-        .join('\n');
+      if (durationSeconds > 0) {
+        const transcript = conversationMessages
+          .map(msg => `[${new Date(msg.timestamp).toLocaleTimeString()}] ${msg.author}: ${msg.text}`)
+          .join('\n');
 
-      const token = await user.getIdToken();
-      await apiClient.endSession(token, projectId, { durationSeconds, transcript });
+        const token = await user.getIdToken();
+        await apiClient.endSession(token, projectId, { durationSeconds, transcript });
 
-      const profile = await apiClient.getUserProfile(token);
-      setProfile(profile);
+        const profile = await apiClient.getUserProfile(token);
+        setProfile(profile);
+      }
     }
 
     setConversationMessages([]);
@@ -110,51 +132,56 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
   }, [user, projectId, conversationMessages, stopSession, onClose, setProfile]);
 
   useEffect(() => {
-    if (messages.length > 0) {
+    if (callState === 'connected') {
       const interval = setInterval(() => {
         if (callBeganRef.current && userProfile) {
           const durationSeconds = Math.round((Date.now() - callBeganRef.current) / 1000);
           const cost = Math.ceil(durationSeconds / 60) * 3;
           if (userProfile.credits <= cost) {
-            hangUp();
-            alert("Credit limit reached. The call has been ended.");
+            alert("Credit limit reached. The call will now end.");
+            hangUpAndSave();
           }
         }
       }, 5000);
       return () => clearInterval(interval);
     }
-  }, [messages, userProfile, hangUp]);
-
-  useEffect(() => {
-    if (isOpen) {
-      startCall();
-    }
-  }, [isOpen]);
+  }, [callState, userProfile, hangUpAndSave]);
 
   if (!isOpen) {
     return null;
   }
 
   const getStatusContent = () => {
-    if (isConnecting) return <div className="flex items-center"><Loader className="animate-spin mr-2" /> Connecting...</div>;
+    if (callState === 'connecting' || isConnecting) return <div className="flex items-center"><Loader className="animate-spin mr-2" /> Connecting...</div>;
     if (connErr) return <div className="text-red-500">Connection Error: {connErr}</div>;
     if (termination) return <div className="text-yellow-500">Call Ended: {termination.reason}</div>;
-    if (messages.length > 0) return <div className="text-green-500">Connected</div>;
-    return <div>Ready to start.</div>;
+    if (callState === 'connected') return <div className="text-green-500">Connected</div>;
+    return <div>Ready to start your practice session.</div>;
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl h-[90vh] flex flex-col">
-        <CardHeader>
-          <CardTitle className="flex justify-between items-center">
-            Practice Session
-            <Button variant="ghost" size="icon" onClick={hangUp}>
-              <X className="h-4 w-4" />
-            </Button>
-          </CardTitle>
-          <div className="text-sm text-muted-foreground">{getStatusContent()}</div>
-        </CardHeader>
+  const renderContent = () => {
+    if (callState === 'idle' || callState === 'connecting') {
+      return (
+        <div className="text-center p-8">
+          <h2 className="text-2xl font-bold mb-4">{project?.title}</h2>
+          <p className="text-muted-foreground mb-8">
+            You are about to start a practice session for a "{project?.detectedUseCase}".
+            <br />
+            Ensure you are in a quiet environment.
+          </p>
+          <Button onClick={startCall} disabled={callState === 'connecting'} size="lg">
+            {callState === 'connecting' ? (
+              <><Loader className="animate-spin mr-2" /> Starting...</>
+            ) : (
+              <><Mic className="mr-2 h-5 w-5" /> Start Call</>
+            )}
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <>
         <CardContent className="flex-grow overflow-y-auto">
           <div className="space-y-4">
             {conversationMessages.map((msg, index) => (
@@ -168,10 +195,27 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
           </div>
         </CardContent>
         <div className="p-4 border-t">
-          <Button onClick={hangUp} variant="destructive" className="w-full">
-            <Phone className="mr-2 h-4 w-4" /> End Call
+          <Button onClick={hangUpAndSave} variant="destructive" className="w-full">
+            <Phone className="mr-2 h-4 w-4" /> End & Save Session
           </Button>
         </div>
+      </>
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-2xl h-[90vh] flex flex-col">
+        <CardHeader>
+          <CardTitle className="flex justify-between items-center">
+            Practice Session
+            <Button variant="ghost" size="icon" onClick={handleClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </CardTitle>
+          <div className="text-sm text-muted-foreground">{getStatusContent()}</div>
+        </CardHeader>
+        {renderContent()}
       </Card>
     </div>
   );
