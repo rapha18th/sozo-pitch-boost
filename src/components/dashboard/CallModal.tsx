@@ -18,6 +18,7 @@ type CallState = 'idle' | 'connecting' | 'connected' | 'ended';
 const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, project }) => {
   const { user, profile: userProfile, setProfile } = useAuth();
   const [callState, setCallState] = useState<CallState>('idle');
+  const [isHangingUp, setIsHangingUp] = useState(false);
   const [conversationMessages, setConversationMessages] = useState<any[]>([]);
   const callBeganRef = useRef<number | null>(null);
 
@@ -108,6 +109,9 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
   }, [callState, stopSession, onClose]);
 
   const hangUpAndSave = useCallback(async () => {
+    if (isHangingUp) return;
+    setIsHangingUp(true);
+
     stopSession();
     setCallState('ended');
 
@@ -135,7 +139,13 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
       setCallState('idle');
       onClose();
     }
-  }, [user, projectId, conversationMessages, stopSession, onClose, setProfile]);
+  }, [user, projectId, conversationMessages, stopSession, onClose, setProfile, isHangingUp]);
+
+  useEffect(() => {
+    if (termination) {
+      hangUpAndSave();
+    }
+  }, [termination, hangUpAndSave]);
 
   useEffect(() => {
     if (callState === 'connected') {
