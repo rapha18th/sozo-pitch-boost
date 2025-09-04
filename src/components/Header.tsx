@@ -59,7 +59,7 @@ const Header = () => {
             <img 
               src="/lovable-uploads/6d93a223-52fd-45a0-9880-510d76c5c0f3.png" 
               alt="Sozo Pitch Helper" 
-              className="h-10 w-auto"
+              className="h-12 w-auto"
             />
           </div>
 
