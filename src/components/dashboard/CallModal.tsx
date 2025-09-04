@@ -1,0 +1,180 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useConversation } from '@elevenlabs/react';
+import { Phone, Mic, Loader, X } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { apiClient, Project } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+interface CallModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  projectId: string;
+  project: Project | null;
+}
+
+const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, project }) => {
+  const { user, profile: userProfile, setProfile } = useAuth();
+  const [conversationMessages, setConversationMessages] = useState<any[]>([]);
+  const callBeganRef = useRef<number | null>(null);
+
+  const {
+    startSession,
+    stopSession,
+    isConnecting,
+    connErr,
+    termination,
+    chat,
+    messages,
+  } = useConversation({
+    agentId: 'agent_2201k4ant3h5fmdshkhnpary29wp',
+    onConnect: () => {
+      callBeganRef.current = Date.now();
+    },
+    onMessage: (message) => {
+      const newMessage = { ...message, timestamp: new Date().toISOString() };
+      setConversationMessages(prev => [...prev, newMessage]);
+    },
+    onError: (error) => {
+      console.error("Conversation error:", error);
+    },
+    onDisconnect: () => {
+      // The hangUp logic will handle this
+    }
+  });
+
+  const generatePitchPersonaDescription = (useCase: string | undefined): string => {
+    switch (useCase) {
+      case 'Job Interview':
+        return "You are a sharp, experienced hiring manager at a major tech company.";
+      case 'Investor Pitch':
+        return "You are a skeptical but fair venture capitalist looking for your next big investment.";
+      case 'Academic Presentation':
+        return "You are a seasoned professor and a leading expert in the field, known for asking tough questions.";
+      default:
+        return "You are a helpful and inquisitive conversational partner.";
+    }
+  };
+
+  const startCall = async () => {
+    if (!user || !userProfile || !project) {
+      console.error("Missing user, profile, or project info");
+      return;
+    }
+    if (userProfile.credits < 3) {
+      alert("You need at least 3 credits to start a call.");
+      return;
+    }
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      alert("Microphone access is required to start the practice session.");
+      return;
+    }
+
+    const token = await user.getIdToken();
+    const briefingData = await apiClient.getAgentBriefing(token, projectId);
+
+    const vars = {
+      user_name: user.displayName || 'User',
+      user_credits: String(userProfile.credits),
+      memory_summary: briefingData.briefing,
+      project_title: project.title,
+      project_short_description: project.short_description || '',
+      project_key_points: project.key_points || '',
+      pitch_persona_description: generatePitchPersonaDescription(project.detectedUseCase),
+    };
+
+    startSession({ dynamicVariables: vars });
+  };
+
+  const hangUp = useCallback(async () => {
+    stopSession();
+
+    if (callBeganRef.current && user) {
+      const durationSeconds = Math.round((Date.now() - callBeganRef.current) / 1000);
+      const transcript = conversationMessages
+        .map(msg => `[${new Date(msg.timestamp).toLocaleTimeString()}] ${msg.author}: ${msg.text}`)
+        .join('\n');
+
+      const token = await user.getIdToken();
+      await apiClient.endSession(token, projectId, { durationSeconds, transcript });
+
+      const profile = await apiClient.getUserProfile(token);
+      setProfile(profile);
+    }
+
+    setConversationMessages([]);
+    callBeganRef.current = null;
+    onClose();
+  }, [user, projectId, conversationMessages, stopSession, onClose, setProfile]);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      const interval = setInterval(() => {
+        if (callBeganRef.current && userProfile) {
+          const durationSeconds = Math.round((Date.now() - callBeganRef.current) / 1000);
+          const cost = Math.ceil(durationSeconds / 60) * 3;
+          if (userProfile.credits <= cost) {
+            hangUp();
+            alert("Credit limit reached. The call has been ended.");
+          }
+        }
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [messages, userProfile, hangUp]);
+
+  useEffect(() => {
+    if (isOpen) {
+      startCall();
+    }
+  }, [isOpen]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const getStatusContent = () => {
+    if (isConnecting) return <div className="flex items-center"><Loader className="animate-spin mr-2" /> Connecting...</div>;
+    if (connErr) return <div className="text-red-500">Connection Error: {connErr}</div>;
+    if (termination) return <div className="text-yellow-500">Call Ended: {termination.reason}</div>;
+    if (messages.length > 0) return <div className="text-green-500">Connected</div>;
+    return <div>Ready to start.</div>;
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-2xl h-[90vh] flex flex-col">
+        <CardHeader>
+          <CardTitle className="flex justify-between items-center">
+            Practice Session
+            <Button variant="ghost" size="icon" onClick={hangUp}>
+              <X className="h-4 w-4" />
+            </Button>
+          </CardTitle>
+          <div className="text-sm text-muted-foreground">{getStatusContent()}</div>
+        </CardHeader>
+        <CardContent className="flex-grow overflow-y-auto">
+          <div className="space-y-4">
+            {conversationMessages.map((msg, index) => (
+              <div key={index} className={`flex ${msg.author === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`p-3 rounded-lg max-w-xs lg:max-w-md ${msg.author === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-900'}`}>
+                  <p className="font-bold capitalize">{msg.author}</p>
+                  <p>{msg.text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+        <div className="p-4 border-t">
+          <Button onClick={hangUp} variant="destructive" className="w-full">
+            <Phone className="mr-2 h-4 w-4" /> End Call
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+export default CallModal;
