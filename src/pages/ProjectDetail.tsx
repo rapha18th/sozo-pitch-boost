@@ -22,6 +22,7 @@ const ProjectDetail = () => {
   const [briefing, setBriefing] = useState<string | null>(null);
   const [loadingBriefing, setLoadingBriefing] = useState(false);
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
+
   const fetchProject = async () => {
     if (!user || !id) return;
     setLoading(true);
