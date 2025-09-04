@@ -45,16 +45,9 @@ except Exception as e:
 try:
     gemini_api_key = os.environ.get("Gemini")
     if not gemini_api_key: raise ValueError("The 'Gemini' environment variable for the API key is not set.")
-    
-    # --- FINAL CORRECTED SDK PATTERN ---
-    # 1. Instantiate the client object.
     client = genai.Client(api_key=gemini_api_key)
-    # 2. Define the model name as a simple string.
     MODEL_NAME = 'gemini-2.0-flash' 
-    # --- END OF CORRECTION ---
-
     logger.info(f"Google GenAI Client initialized successfully for model {MODEL_NAME}.")
-
     ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
     if not ELEVENLABS_API_KEY: raise ValueError("The 'ELEVENLABS_API_KEY' environment variable is not set.")
     logger.info("ElevenLabs API Key loaded.")
@@ -106,6 +99,37 @@ def extract_text_from_input(file, text):
 # -----------------------------------------------------------------------------
 # 3. AI LOGIC FUNCTIONS
 # -----------------------------------------------------------------------------
+
+def summarize_and_extract_context_with_gemini(text):
+    """
+    **NEW**: Uses Gemini to intelligently summarize the user's document.
+    """
+    logger.info("Starting intelligent context extraction with Gemini.")
+    prompt = f"""
+    You are an expert document analyst. Analyze the following document text and perform two tasks:
+    1.  Generate a concise, one-sentence "short_description" of the document's overall purpose.
+    2.  Extract the "key_points" that are most critical for a mock interview or pitch scenario. This should be a dense paragraph or a few bullet points.
+
+    Your entire response MUST be a single, valid JSON object with the keys "short_description" and "key_points". Do not include any text before or after the JSON.
+
+    Document Text:
+    "{text}"
+    """
+    try:
+        response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
+        # Clean up the response to ensure it's valid JSON
+        json_text = response.text.strip().lstrip("```json").rstrip("```")
+        data = json.loads(json_text)
+        logger.info("Successfully extracted intelligent context.")
+        return data
+    except Exception as e:
+        logger.error(f"Error during intelligent context extraction: {e}")
+        # Fallback to a simple truncation if the AI fails
+        return {
+            "short_description": "User-provided project document.",
+            "key_points": text[:1000]
+        }
+
 def detect_use_case_with_gemini(text):
     logger.info("Starting use case detection with Gemini.")
     prompt = f"""
@@ -115,7 +139,6 @@ def detect_use_case_with_gemini(text):
     Text: "{text[:4000]}"
     """
     try:
-        # CORRECTED: Use the client.models.generate_content method.
         response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
         category = response.text.strip().replace("'", "").replace('"', '')
         valid_categories = ['Job Interview', 'Investor Pitch', 'Academic Presentation']
@@ -146,30 +169,26 @@ def analyze_transcript_with_gemini(uid, project_id, transcript, duration_seconds
         project_data = project_ref.get()
         if not project_data: raise ValueError("Project not found for analysis.")
         use_case = project_data.get('detectedUseCase', 'General')
-        briefing_text = project_data.get('originalBriefingText', '')
+        # **MODIFIED**: Use the high-quality key_points for context in the analysis prompt
+        context_text = project_data.get('key_points', project_data.get('originalBriefingText', ''))
         prompt = f"""
-        You are an expert performance coach and communication analyst. Your task is to analyze the following transcript of a mock '{use_case}'.
-        The user's original goal was based on this document: "{briefing_text[:2000]}"
-        Your analysis must be structured as a valid JSON object. Do not include any text before or after the JSON object.
-        Evaluate the user's performance on these four core criteria:
-        1. Communication Skills (clarity, conciseness, confidence)
-        2. Content Mastery (subject knowledge, ability to logically support claims)
-        3. Engagement & Delivery (tone, pacing, audience awareness)
-        4. Resilience Under Pressure (staying composed when challenged, handling unexpected questions)
-        Based on these criteria, provide the following in your JSON response:
-        - A score from 0 to 100 for each of the four criteria.
-        - A "qualitativeStrengths" string summarizing 2-3 key things the user did well.
-        - A "qualitativeImprovements" string outlining 2-3 actionable areas for improvement.
-        - A "contextSpecificFeedback" string with feedback tailored to the '{use_case}' context. {_get_context_specific_instructions(use_case)}
+        You are an expert performance coach. The user was practicing for a mock '{use_case}'.
+        Their session was based on a document with these key points: "{context_text}"
+        
+        Your task is to analyze the following transcript. Your analysis must be a valid JSON object.
+        Evaluate on: Communication Skills, Content Mastery, Engagement & Delivery, and Resilience Under Pressure.
+        
+        Provide: A score (0-100) for each, "qualitativeStrengths", "qualitativeImprovements", and "contextSpecificFeedback".
+        
         The JSON structure MUST be:
         {{
           "communicationScore": <integer>, "contentMasteryScore": <integer>, "engagementDeliveryScore": <integer>,
           "resilienceScore": <integer>, "qualitativeStrengths": "<string>", "qualitativeImprovements": "<string>",
           "contextSpecificFeedback": "<string>"
         }}
-        Transcript to analyze: "{transcript}"
+        
+        Transcript: "{transcript}"
         """
-        # CORRECTED: Use the client.models.generate_content method.
         response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
         feedback_json_text = response.text.strip().lstrip("```json").rstrip("```")
         feedback_data = json.loads(feedback_json_text)
@@ -201,9 +220,13 @@ def generate_agent_briefing(uid, project_id):
     project_data = project_ref.get()
     if not project_data: raise ValueError("Project not found.")
     use_case = project_data.get('detectedUseCase', 'General')
-    briefing_text = project_data.get('originalBriefingText', '')
+    
+    # **MODIFIED**: Use the high-quality key_points instead of raw text truncation.
+    key_points = project_data.get('key_points', 'No specific context was extracted.')
+    
+    base_briefing = f"This is a mock '{use_case}'. The user's context is based on a document with these key points: '{key_points}'. Your goal is to act as a realistic {use_case.split(' ')[0]} interviewer/panelist and ask relevant questions."
+    
     sessions = project_data.get('practiceSessions', {})
-    base_briefing = f"This is a mock '{use_case}'. The user's context is based on the following document: '{briefing_text[:1000]}'. Your goal is to act as a realistic {use_case.split(' ')[0]} interviewer/panelist."
     if not sessions: return f"{base_briefing} This is the user's first practice session for this project. Start with some introductory questions."
     try:
         past_feedback_summary = []
@@ -223,7 +246,6 @@ def generate_agent_briefing(uid, project_id):
         - "The user struggles with concise communication. Ask multi-part questions to test their ability to stay on track."
         Your directive for the agent:
         """
-        # CORRECTED: Use the client.models.generate_content method.
         response = client.models.generate_content(model=MODEL_NAME, contents=summary_prompt)
         dynamic_directive = response.text.strip()
         logger.info(f"Generated dynamic directive for agent: {dynamic_directive}")
@@ -231,6 +253,7 @@ def generate_agent_briefing(uid, project_id):
     except Exception as e:
         logger.error(f"Could not generate dynamic briefing for project {project_id}: {e}")
         return base_briefing
+
 
 # -----------------------------------------------------------------------------
 # 4. USER & AUTHENTICATION ENDPOINTS
@@ -300,14 +323,24 @@ def create_project():
         return jsonify({'error': 'Insufficient credits to create a project.'}), 402
     try:
         briefing_text = extract_text_from_input(request.files.get('file'), request.form.get('text'))
+        
+        # **MODIFIED**: Call the new AI functions for intelligent processing
+        context_data = summarize_and_extract_context_with_gemini(briefing_text)
         detected_use_case = detect_use_case_with_gemini(briefing_text)
+        
         project_id = str(uuid.uuid4())
         project_ref = db_ref.child(f'projects/{uid}/{project_id}')
-        title = ' '.join(briefing_text.split()[:8]) + '...'
+        
         project_data = {
-            "projectId": project_id, "userId": uid, "title": title,
-            "detectedUseCase": detected_use_case, "originalBriefingText": briefing_text,
-            "createdAt": datetime.utcnow().isoformat() + "Z", "practiceSessions": {}
+            "projectId": project_id,
+            "userId": uid,
+            "title": context_data.get('short_description', 'New Project'), # Use intelligent description for title
+            "detectedUseCase": detected_use_case,
+            "originalBriefingText": briefing_text, # Keep the original for reference
+            "key_points": context_data.get('key_points'), # **NEW** field
+            "short_description": context_data.get('short_description'), # **NEW** field
+            "createdAt": datetime.utcnow().isoformat() + "Z",
+            "practiceSessions": {}
         }
         project_ref.set(project_data)
         user_ref.update({'credits': user_data.get('credits', 0) - 1})
@@ -318,6 +351,7 @@ def create_project():
         logger.error(f"Project creation failed for user {uid}: {e}")
         return jsonify({'error': 'An internal server error occurred.'}), 500
 
+# ... [The rest of the endpoints from /api/projects (GET) to the end of the file remain unchanged] ...
 @app.route('/api/projects', methods=['GET'])
 def list_projects():
     uid = verify_token(request.headers.get('Authorization'))
