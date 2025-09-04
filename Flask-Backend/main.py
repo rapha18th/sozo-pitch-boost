@@ -101,9 +101,6 @@ def extract_text_from_input(file, text):
 # -----------------------------------------------------------------------------
 
 def summarize_and_extract_context_with_gemini(text):
-    """
-    **NEW**: Uses Gemini to intelligently summarize the user's document.
-    """
     logger.info("Starting intelligent context extraction with Gemini.")
     prompt = f"""
     You are an expert document analyst. Analyze the following document text and perform two tasks:
@@ -117,14 +114,12 @@ def summarize_and_extract_context_with_gemini(text):
     """
     try:
         response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
-        # Clean up the response to ensure it's valid JSON
         json_text = response.text.strip().lstrip("```json").rstrip("```")
         data = json.loads(json_text)
         logger.info("Successfully extracted intelligent context.")
         return data
     except Exception as e:
         logger.error(f"Error during intelligent context extraction: {e}")
-        # Fallback to a simple truncation if the AI fails
         return {
             "short_description": "User-provided project document.",
             "key_points": text[:1000]
@@ -169,7 +164,6 @@ def analyze_transcript_with_gemini(uid, project_id, transcript, duration_seconds
         project_data = project_ref.get()
         if not project_data: raise ValueError("Project not found for analysis.")
         use_case = project_data.get('detectedUseCase', 'General')
-        # **MODIFIED**: Use the high-quality key_points for context in the analysis prompt
         context_text = project_data.get('key_points', project_data.get('originalBriefingText', ''))
         prompt = f"""
         You are an expert performance coach. The user was practicing for a mock '{use_case}'.
@@ -220,12 +214,8 @@ def generate_agent_briefing(uid, project_id):
     project_data = project_ref.get()
     if not project_data: raise ValueError("Project not found.")
     use_case = project_data.get('detectedUseCase', 'General')
-    
-    # **MODIFIED**: Use the high-quality key_points instead of raw text truncation.
     key_points = project_data.get('key_points', 'No specific context was extracted.')
-    
     base_briefing = f"This is a mock '{use_case}'. The user's context is based on a document with these key points: '{key_points}'. Your goal is to act as a realistic {use_case.split(' ')[0]} interviewer/panelist and ask relevant questions."
-    
     sessions = project_data.get('practiceSessions', {})
     if not sessions: return f"{base_briefing} This is the user's first practice session for this project. Start with some introductory questions."
     try:
@@ -323,24 +313,18 @@ def create_project():
         return jsonify({'error': 'Insufficient credits to create a project.'}), 402
     try:
         briefing_text = extract_text_from_input(request.files.get('file'), request.form.get('text'))
-        
-        # **MODIFIED**: Call the new AI functions for intelligent processing
         context_data = summarize_and_extract_context_with_gemini(briefing_text)
         detected_use_case = detect_use_case_with_gemini(briefing_text)
-        
         project_id = str(uuid.uuid4())
         project_ref = db_ref.child(f'projects/{uid}/{project_id}')
-        
         project_data = {
-            "projectId": project_id,
-            "userId": uid,
-            "title": context_data.get('short_description', 'New Project'), # Use intelligent description for title
+            "projectId": project_id, "userId": uid,
+            "title": context_data.get('short_description', 'New Project'),
             "detectedUseCase": detected_use_case,
-            "originalBriefingText": briefing_text, # Keep the original for reference
-            "key_points": context_data.get('key_points'), # **NEW** field
-            "short_description": context_data.get('short_description'), # **NEW** field
-            "createdAt": datetime.utcnow().isoformat() + "Z",
-            "practiceSessions": {}
+            "originalBriefingText": briefing_text,
+            "key_points": context_data.get('key_points'),
+            "short_description": context_data.get('short_description'),
+            "createdAt": datetime.utcnow().isoformat() + "Z", "practiceSessions": {}
         }
         project_ref.set(project_data)
         user_ref.update({'credits': user_data.get('credits', 0) - 1})
@@ -351,7 +335,6 @@ def create_project():
         logger.error(f"Project creation failed for user {uid}: {e}")
         return jsonify({'error': 'An internal server error occurred.'}), 500
 
-# ... [The rest of the endpoints from /api/projects (GET) to the end of the file remain unchanged] ...
 @app.route('/api/projects', methods=['GET'])
 def list_projects():
     uid = verify_token(request.headers.get('Authorization'))
@@ -442,7 +425,7 @@ def get_agent_url():
         return jsonify({'error': 'An internal server error occurred.'}), 500
 
 @app.route('/api/projects/<string:project_id>/sessions/end', methods=['POST'])
-def end_session_and_analyze():
+def end_session_and_analyze(project_id): # <-- CORRECTED: Added project_id parameter
     uid = verify_token(request.headers.get('Authorization'))
     if not uid: return jsonify({'error': 'Unauthorized'}), 401
     data = request.get_json()
