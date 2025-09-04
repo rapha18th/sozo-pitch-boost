@@ -11,7 +11,7 @@ interface PracticeSessionListProps {
 }
 
 const PracticeSessionList: React.FC<PracticeSessionListProps> = ({ sessions, projectId }) => {
-  const sessionArray = Object.values(sessions || {});
+  const sessionArray = Object.values(sessions);
 
   if (sessionArray.length === 0) {
     return <p className="text-steel-grey">No practice sessions yet.</p>;
