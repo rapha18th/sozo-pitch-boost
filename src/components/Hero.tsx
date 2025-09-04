@@ -43,10 +43,10 @@ const Hero = () => {
           <div className="text-white/70 text-sm">
             <p className="mb-4">Trusted by professionals at</p>
             <div className="flex flex-wrap justify-center items-center gap-8 opacity-60">
-              <div className="px-4 py-2 border border-white/20 rounded-lg">Quantilytix</div>
-              <div className="px-4 py-2 border border-white/20 rounded-lg">DUT</div>
-              <div className="px-4 py-2 border border-white/20 rounded-lg">SmartQx</div>
-              <div className="px-4 py-2 border border-white/20 rounded-lg">OHA</div>
+              <div className="px-4 py-2 border border-white/20 rounded-lg">Google</div>
+              <div className="px-4 py-2 border border-white/20 rounded-lg">Microsoft</div>
+              <div className="px-4 py-2 border border-white/20 rounded-lg">Stanford</div>
+              <div className="px-4 py-2 border border-white/20 rounded-lg">Y Combinator</div>
             </div>
           </div>
         </div>

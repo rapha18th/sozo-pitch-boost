@@ -3,19 +3,19 @@ import { Star } from "lucide-react";
 const SocialProof = () => {
   const testimonials = [
     {
-      quote: "Pitch Helper helped me land my dream job at Google. The AI feedback was incredibly detailed and actionable.",
+      quote: "Sozo helped me land my dream job at Google. The AI feedback was incredibly detailed and actionable.",
       author: "Sarah Chen", 
       role: "Software Engineer at Google",
       avatar: "SC"
     },
     {
-      quote: "We raised our Series A after practicing with Pitch Helper. The investor question preparation was game-changing.",
+      quote: "We raised our Series A after practicing with Sozo. The investor question preparation was game-changing.",
       author: "Marcus Rodriguez",
       role: "CEO, TechFlow",
       avatar: "MR"
     },
     {
-      quote: "My thesis defense went flawlessly thanks to Pitch Helper's academic preparation tools. Highly recommended!",
+      quote: "My thesis defense went flawlessly thanks to Sozo's academic preparation tools. Highly recommended!",
       author: "Dr. Emily Watson",
       role: "PhD Graduate, MIT",
       avatar: "EW"

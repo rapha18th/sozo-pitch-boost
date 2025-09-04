@@ -58,7 +58,7 @@ const Header = () => {
           <div className="flex items-center">
             <img 
               src="/lovable-uploads/6d93a223-52fd-45a0-9880-510d76c5c0f3.png" 
-              alt="Pitch Helper"
+              alt="Sozo Pitch Helper" 
               className="h-12 w-auto"
             />
           </div>
@@ -69,7 +69,7 @@ const Header = () => {
               <a
                 key={item.name}
                 href={item.href}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-smooth md:text-lg md:font-semibold"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-smooth"
               >
                 {item.name}
               </a>
