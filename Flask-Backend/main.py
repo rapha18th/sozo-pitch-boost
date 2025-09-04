@@ -46,11 +46,11 @@ try:
     gemini_api_key = os.environ.get("Gemini")
     if not gemini_api_key: raise ValueError("The 'Gemini' environment variable for the API key is not set.")
     
-    # --- CORRECTED SDK PATTERN, AS PER OFFICIAL DOCUMENTATION ---
-    # Instantiate the client object. This is the single, correct entry point.
+    # --- FINAL CORRECTED SDK PATTERN ---
+    # 1. Instantiate the client object.
     client = genai.Client(api_key=gemini_api_key)
-    # Define the model name to be used in generation calls.
-    MODEL_NAME = 'models/gemini-2.0-flash' 
+    # 2. Define the model name as a simple string.
+    MODEL_NAME = 'gemini-2.0-flash' 
     # --- END OF CORRECTION ---
 
     logger.info(f"Google GenAI Client initialized successfully for model {MODEL_NAME}.")
@@ -115,8 +115,8 @@ def detect_use_case_with_gemini(text):
     Text: "{text[:4000]}"
     """
     try:
-        # CORRECTED: Use the client object and specify the model name.
-        response = client.generate_content(model=MODEL_NAME, contents=prompt)
+        # CORRECTED: Use the client.models.generate_content method.
+        response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
         category = response.text.strip().replace("'", "").replace('"', '')
         valid_categories = ['Job Interview', 'Investor Pitch', 'Academic Presentation']
         if category in valid_categories:
@@ -169,8 +169,8 @@ def analyze_transcript_with_gemini(uid, project_id, transcript, duration_seconds
         }}
         Transcript to analyze: "{transcript}"
         """
-        # CORRECTED: Use the client object and specify the model name.
-        response = client.generate_content(model=MODEL_NAME, contents=prompt)
+        # CORRECTED: Use the client.models.generate_content method.
+        response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
         feedback_json_text = response.text.strip().lstrip("```json").rstrip("```")
         feedback_data = json.loads(feedback_json_text)
         session_id = str(uuid.uuid4())
@@ -223,8 +223,8 @@ def generate_agent_briefing(uid, project_id):
         - "The user struggles with concise communication. Ask multi-part questions to test their ability to stay on track."
         Your directive for the agent:
         """
-        # CORRECTED: Use the client object and specify the model name.
-        response = client.generate_content(model=MODEL_NAME, contents=summary_prompt)
+        # CORRECTED: Use the client.models.generate_content method.
+        response = client.models.generate_content(model=MODEL_NAME, contents=summary_prompt)
         dynamic_directive = response.text.strip()
         logger.info(f"Generated dynamic directive for agent: {dynamic_directive}")
         return f"{base_briefing} {dynamic_directive}"
