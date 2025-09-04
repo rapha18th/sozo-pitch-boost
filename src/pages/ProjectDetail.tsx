@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient, Project } from '@/lib/api';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
@@ -118,6 +118,9 @@ const ProjectDetail = () => {
     <div className="min-h-screen bg-warm-grey">
       <DashboardHeader />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Button asChild variant="outline" className="mb-4">
+          <Link to="/dashboard">&larr; Back to Dashboard</Link>
+        </Button>
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-3xl font-bold text-deep-navy">{project.title}</h1>
           <Badge>{project.detectedUseCase}</Badge>
