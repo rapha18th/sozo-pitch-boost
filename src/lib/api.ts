@@ -64,21 +64,6 @@ class ApiClient {
     };
   }
 
-  async signUp(data: SignUpData, token: string): Promise<UserProfile> {
-    const response = await fetch(`${BASE_URL}/api/auth/signup`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(token),
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Sign up failed');
-    }
-
-    return response.json();
-  }
-
   async syncProfile(token: string): Promise<UserProfile> {
     const response = await fetch(`${BASE_URL}/api/auth/social-signin`, {
       method: 'POST',
