@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Hero = () => {
   return (
@@ -18,13 +19,15 @@ const Hero = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-            <Button 
-              size="lg" 
-              className="bg-soft-sky hover:bg-soft-sky/90 text-deep-navy font-semibold px-8 py-4 text-lg group"
-            >
-              Get Started Free
-              <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </Button>
+            <Link to="/signup">
+              <Button
+                size="lg"
+                className="bg-soft-sky hover:bg-soft-sky/90 text-deep-navy font-semibold px-8 py-4 text-lg group"
+              >
+                Get Started Free
+                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
             
             <Button 
               variant="outline" 

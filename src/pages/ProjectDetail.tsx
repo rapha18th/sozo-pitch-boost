@@ -1,0 +1,202 @@
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { apiClient, Project } from '@/lib/api';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import PracticeSessionList from '@/components/dashboard/PracticeSessionList';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+const ProjectDetail = () => {
+  const { id } = useParams<{ id: string }>();
+  const { user, setProfile } = useAuth();
+  const { toast } = useToast();
+  const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [briefing, setBriefing] = useState<string | null>(null);
+  const [loadingBriefing, setLoadingBriefing] = useState(false);
+  const [mockTranscript, setMockTranscript] = useState("This is a sample transcript. I felt the interview went well, but I was a bit nervous when asked about my previous experience.");
+  const [mockDuration, setMockDuration] = useState(300);
+  const [endingSession, setEndingSession] = useState(false);
+
+  const fetchProject = async () => {
+    if (!user || !id) return;
+    setLoading(true);
+    try {
+      const token = await user.getIdToken();
+      const projectData = await apiClient.getProject(token, id);
+      setProject(projectData);
+    } catch (error) {
+      console.error("Failed to fetch project", error);
+      toast({ title: 'Failed to fetch project details.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProject();
+  }, [user, id, toast]);
+
+  const handleEndSession = async () => {
+    if (!user || !id) return;
+    setEndingSession(true);
+    try {
+      const token = await user.getIdToken();
+      const result = await apiClient.endSession(token, id, {
+        durationSeconds: mockDuration,
+        transcript: mockTranscript,
+      });
+      toast({
+        title: "Session Ended Successfully",
+        description: `You were charged ${result.creditsDeducted} credits.`,
+      });
+      // Refresh user profile to get updated credits
+      const profile = await apiClient.getUserProfile(token);
+      setProfile(profile);
+      // Refresh project to get new session
+      fetchProject();
+    } catch (error: any) {
+      toast({ title: 'Failed to end session.', description: error.message, variant: 'destructive' });
+    } finally {
+      setEndingSession(false);
+    }
+  };
+
+  const handleGenerateBriefing = async () => {
+    if (!user || !id) return;
+    setLoadingBriefing(true);
+    try {
+      const token = await user.getIdToken();
+      const briefingData = await apiClient.getAgentBriefing(token, id);
+      setBriefing(briefingData.briefing);
+    } catch (error) {
+      console.error("Failed to generate briefing", error);
+      toast({ title: 'Failed to generate briefing.', variant: 'destructive' });
+    } finally {
+      setLoadingBriefing(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-warm-grey">
+        <DashboardHeader />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Skeleton className="h-10 w-3/4 mb-4" />
+          <Skeleton className="h-6 w-1/2 mb-8" />
+          <Card className="p-6">
+            <Skeleton className="h-6 w-1/4 mb-4" />
+            <Skeleton className="h-4 w-full mb-2" />
+            <Skeleton className="h-4 w-full mb-2" />
+            <Skeleton className="h-4 w-3/4" />
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="min-h-screen bg-warm-grey">
+        <DashboardHeader />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <h1 className="text-3xl font-bold text-deep-navy">Project not found</h1>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-warm-grey">
+      <DashboardHeader />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-3xl font-bold text-deep-navy">{project.title}</h1>
+          <Badge>{project.detectedUseCase}</Badge>
+        </div>
+        <p className="text-sm text-steel-grey mb-8">
+          Created on: {new Date(project.createdAt).toLocaleDateString()}
+        </p>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            <Card className="p-6">
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button variant="link" className="p-0 mb-4">
+                    <h2 className="text-2xl font-bold text-deep-navy">Original Briefing</h2>
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <p className="text-steel-grey whitespace-pre-wrap">{project.originalBriefingText}</p>
+                </CollapsibleContent>
+              </Collapsible>
+            </Card>
+
+            <PracticeSessionList sessions={project.practiceSessions} projectId={project.projectId} />
+          </div>
+
+          <div className="space-y-8">
+            <Card className="p-6">
+              <h2 className="text-2xl font-bold text-deep-navy mb-4">Agent Briefing</h2>
+              <Button onClick={handleGenerateBriefing} disabled={loadingBriefing} className="w-full mb-4">
+                {loadingBriefing ? 'Generating...' : 'Generate Briefing'}
+              </Button>
+              {briefing && (
+                <div className="bg-warm-grey p-4 rounded-md">
+                  <p className="text-steel-grey whitespace-pre-wrap">{briefing}</p>
+                </div>
+              )}
+            </Card>
+            <Card className="p-6 bg-gray-100 border-dashed">
+                <h2 className="text-2xl font-bold text-deep-navy mb-4">Start Practice</h2>
+                <p className="text-steel-grey mb-4">
+                    The real-time practice session UI will be available in a future update.
+                </p>
+                <Button disabled className="w-full">Start Practice Session</Button>
+            </Card>
+            <Card className="p-6">
+              <h2 className="text-2xl font-bold text-deep-navy mb-4">Mock End Session</h2>
+              <p className="text-sm text-steel-grey mb-4">
+                Use this form to simulate the end of a practice session and generate a report.
+              </p>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="mock-transcript">Mock Transcript</Label>
+                  <Textarea
+                    id="mock-transcript"
+                    value={mockTranscript}
+                    onChange={(e) => setMockTranscript(e.target.value)}
+                    rows={5}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="mock-duration">Duration (seconds)</Label>
+                  <Input
+                    id="mock-duration"
+                    type="number"
+                    value={mockDuration}
+                    onChange={(e) => setMockDuration(Number(e.target.value))}
+                  />
+                </div>
+                <Button onClick={handleEndSession} disabled={endingSession} className="w-full">
+                  {endingSession ? 'Ending Session...' : 'End Session & Get Feedback'}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default ProjectDetail;
