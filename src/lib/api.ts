@@ -21,6 +21,8 @@ export interface Project {
   title: string;
   detectedUseCase: 'Job Interview' | 'Investor Pitch' | 'Academic Presentation';
   originalBriefingText: string;
+  key_points?: string;
+  short_description?: string;
   createdAt: string;
   practiceSessions: Record<string, Session>;
 }
