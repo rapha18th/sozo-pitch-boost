@@ -18,7 +18,13 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+			},
 			colors: {
+				'deep-navy': 'hsl(var(--deep-navy))',
+				'soft-sky': 'hsl(var(--soft-sky))',
+				'warm-grey': 'hsl(var(--warm-grey))',
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
