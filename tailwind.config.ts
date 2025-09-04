@@ -25,6 +25,7 @@ export default {
 				'deep-navy': 'hsl(var(--deep-navy))',
 				'soft-sky': 'hsl(var(--soft-sky))',
 				'warm-grey': 'hsl(var(--warm-grey))',
+				'steel-grey': 'hsl(var(--steel-grey))',
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',

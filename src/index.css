@@ -12,6 +12,7 @@ All colors MUST be HSL.
     --deep-navy: 215 88% 16%;
     --soft-sky: 201 74% 75%;
     --warm-grey: 0 0% 96%;
+    --steel-grey: 217 20% 25%;
     
     /* Design System */
     --background: 0 0% 100%;
@@ -131,6 +132,10 @@ All colors MUST be HSL.
     color: hsl(var(--soft-sky));
   }
   
+  .text-steel-grey {
+    color: hsl(var(--steel-grey));
+  }
+  
   .border-soft-sky {
     border-color: hsl(var(--soft-sky));
   }
@@ -141,5 +146,9 @@ All colors MUST be HSL.
 
   .transition-smooth {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .shadow-soft {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   }
 }

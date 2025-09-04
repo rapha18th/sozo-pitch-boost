@@ -89,7 +89,7 @@ const Footer = () => {
         <div className="border-t border-white/10 mt-12 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-white/60 text-sm mb-4 md:mb-0">
-              © 2024 Sozo Pitch Helper. All rights reserved.
+              © {new Date().getFullYear()} Sozo Pitch Helper. All rights reserved.
             </p>
             <div className="flex items-center space-x-6 text-sm">
               <span className="text-white/60">
