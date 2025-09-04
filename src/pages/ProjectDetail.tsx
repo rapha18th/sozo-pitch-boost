@@ -10,9 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import PracticeSessionList from '@/components/dashboard/PracticeSessionList';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import CallModal from '@/components/dashboard/CallModal';
+import { Link } from 'react-router-dom';
 
 const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -22,9 +21,7 @@ const ProjectDetail = () => {
   const [loading, setLoading] = useState(true);
   const [briefing, setBriefing] = useState<string | null>(null);
   const [loadingBriefing, setLoadingBriefing] = useState(false);
-  const [mockTranscript, setMockTranscript] = useState("This is a sample transcript. I felt the interview went well, but I was a bit nervous when asked about my previous experience.");
-  const [mockDuration, setMockDuration] = useState(300);
-  const [endingSession, setEndingSession] = useState(false);
+  const [isCallModalOpen, setIsCallModalOpen] = useState(false);
 
   const fetchProject = async () => {
     if (!user || !id) return;
@@ -44,31 +41,6 @@ const ProjectDetail = () => {
   useEffect(() => {
     fetchProject();
   }, [user, id, toast]);
-
-  const handleEndSession = async () => {
-    if (!user || !id) return;
-    setEndingSession(true);
-    try {
-      const token = await user.getIdToken();
-      const result = await apiClient.endSession(token, id, {
-        durationSeconds: mockDuration,
-        transcript: mockTranscript,
-      });
-      toast({
-        title: "Session Ended Successfully",
-        description: `You were charged ${result.creditsDeducted} credits.`,
-      });
-      // Refresh user profile to get updated credits
-      const profile = await apiClient.getUserProfile(token);
-      setProfile(profile);
-      // Refresh project to get new session
-      fetchProject();
-    } catch (error: any) {
-      toast({ title: 'Failed to end session.', description: error.message, variant: 'destructive' });
-    } finally {
-      setEndingSession(false);
-    }
-  };
 
   const handleGenerateBriefing = async () => {
     if (!user || !id) return;
@@ -118,8 +90,18 @@ const ProjectDetail = () => {
     <div className="min-h-screen bg-warm-grey">
       <DashboardHeader />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-3xl font-bold text-deep-navy">{project.title}</h1>
+        <Button asChild variant="outline" className="mb-4">
+          <Link to="/dashboard">&larr; Back to Dashboard</Link>
+        </Button>
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-deep-navy">{project.title}</h1>
+            {project.short_description && project.title !== project.short_description && (
+              <p className="text-lg text-muted-foreground mt-1 italic">
+                Original: "{project.short_description}"
+              </p>
+            )}
+          </div>
           <Badge>{project.detectedUseCase}</Badge>
         </div>
         <p className="text-sm text-steel-grey mb-8">
@@ -128,6 +110,13 @@ const ProjectDetail = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
+            {project.key_points && (
+              <Card className="p-6">
+                <h2 className="text-2xl font-bold text-deep-navy mb-4">Key Points</h2>
+                <p className="text-steel-grey whitespace-pre-wrap">{project.key_points}</p>
+              </Card>
+            )}
+
             <Card className="p-6">
               <Collapsible>
                 <CollapsibleTrigger asChild>
@@ -159,42 +148,21 @@ const ProjectDetail = () => {
             <Card className="p-6 bg-gray-100 border-dashed">
                 <h2 className="text-2xl font-bold text-deep-navy mb-4">Start Practice</h2>
                 <p className="text-steel-grey mb-4">
-                    The real-time practice session UI will be available in a future update.
+                    Click the button below to start a real-time practice session with our AI agent.
                 </p>
-                <Button disabled className="w-full">Start Practice Session</Button>
-            </Card>
-            <Card className="p-6">
-              <h2 className="text-2xl font-bold text-deep-navy mb-4">Mock End Session</h2>
-              <p className="text-sm text-steel-grey mb-4">
-                Use this form to simulate the end of a practice session and generate a report.
-              </p>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="mock-transcript">Mock Transcript</Label>
-                  <Textarea
-                    id="mock-transcript"
-                    value={mockTranscript}
-                    onChange={(e) => setMockTranscript(e.target.value)}
-                    rows={5}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="mock-duration">Duration (seconds)</Label>
-                  <Input
-                    id="mock-duration"
-                    type="number"
-                    value={mockDuration}
-                    onChange={(e) => setMockDuration(Number(e.target.value))}
-                  />
-                </div>
-                <Button onClick={handleEndSession} disabled={endingSession} className="w-full">
-                  {endingSession ? 'Ending Session...' : 'End Session & Get Feedback'}
-                </Button>
-              </div>
+                <Button onClick={() => setIsCallModalOpen(true)} className="w-full">Start Practice Session</Button>
             </Card>
           </div>
         </div>
       </main>
+      {isCallModalOpen && (
+        <CallModal
+          isOpen={isCallModalOpen}
+          onClose={() => setIsCallModalOpen(false)}
+          projectId={project.projectId}
+          project={project}
+        />
+      )}
     </div>
   );
 };
