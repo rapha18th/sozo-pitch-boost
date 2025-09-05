@@ -30,7 +30,6 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
   const [conversationMessages, setConversationMessages] = useState<ConversationMessage[]>([]);
   const [connErr, setConnErr] = useState<string | null>(null);
   const [termination, setTermination] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   
   const callBeganRef = useRef<number | null>(null);
   const isProcessingEndRef = useRef(false);
@@ -70,7 +69,7 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
       console.log("Conversation disconnected");
       if (!isProcessingEndRef.current) {
         setTermination('The assistant ended the call');
-        handleCallDisconnection();
+        setCallState('idle');
       }
     }
   });
@@ -80,7 +79,6 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
     setConversationMessages([]);
     setConnErr(null);
     setTermination(null);
-    setIsAnalyzing(false);
     callBeganRef.current = null;
     isProcessingEndRef.current = false;
     
@@ -126,68 +124,6 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
     }
   };
 
-  const saveSession = async (): Promise<void> => {
-    if (!callBeganRef.current || !user || conversationMessages.length === 0) {
-      console.log('No session to save or missing required data');
-      return;
-    }
-
-    const durationSeconds = Math.round((Date.now() - callBeganRef.current) / 1000);
-    
-    if (durationSeconds < 5) {
-      console.log('Session too short to save (< 5 seconds)');
-      return;
-    }
-
-    const transcript = buildTranscript(conversationMessages);
-    console.log(`Saving session: ${durationSeconds}s duration, ${conversationMessages.length} messages`);
-
-    setIsAnalyzing(true);
-
-    try {
-      const token = await user.getIdToken();
-      
-      // Save session with timeout
-      const savePromise = apiClient.endSession(token, projectId, { 
-        durationSeconds, 
-        transcript 
-      });
-      
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Save timeout after 30 seconds')), 30000)
-      );
-
-      const result = await Promise.race([savePromise, timeoutPromise]);
-      console.log('Session saved successfully:', result);
-
-      // Update user profile to reflect new credits
-      const updatedProfile = await apiClient.getUserProfile(token);
-      setProfile(updatedProfile);
-      
-      setTermination(`Session saved! Credits used: ${result.creditsDeducted}, Remaining: ${result.remainingCredits}`);
-      
-    } catch (error: any) {
-      console.error("Failed to save session:", error);
-      setTermination(`Save failed: ${error.message}`);
-      throw error; // Re-throw to handle in calling function
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  const handleCallDisconnection = useCallback(async () => {
-    if (isProcessingEndRef.current) return;
-    
-    console.log('Handling call disconnection...');
-    isProcessingEndRef.current = true;
-
-    try {
-      await saveSession();
-    } catch (error) {
-      console.error("Error saving session on disconnect:", error);
-    }
-  }, [saveSession]);
-
   const startCall = async () => {
     if (callState !== 'idle') return;
     
@@ -226,8 +162,6 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
         user_credits: String(userProfile.credits),
         memory_summary: briefingData.briefing || '',
         project_title: project.title || '',
-        project_short_description: project.short_description || '',
-        project_key_points: project.key_points || '',
         pitch_persona_description: generatePitchPersonaDescription(project.detectedUseCase),
       };
 
@@ -258,30 +192,47 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
         endSession();
       }
 
-      // Save session data
-      await saveSession();
-      
+      // Save session data if we have a valid call
+      if (callBeganRef.current && user && conversationMessages.length > 0) {
+        const durationSeconds = Math.round((Date.now() - callBeganRef.current) / 1000);
+        
+        if (durationSeconds > 0) {
+          const transcript = buildTranscript(conversationMessages);
+          console.log(`Saving session: ${durationSeconds}s duration, ${conversationMessages.length} messages`);
+
+          const token = await user.getIdToken();
+          
+          // Save session using the backend endpoint
+          const result = await apiClient.endSession(token, projectId, { 
+            durationSeconds, 
+            transcript 
+          });
+          
+          console.log('Session saved successfully:', result);
+
+          // Update user profile to reflect new credits
+          const updatedProfile = await apiClient.getUserProfile(token);
+          setProfile(updatedProfile);
+          
+          // Show success message
+          setTermination(`Session saved! Session ID: ${result.sessionId}, Credits deducted: ${result.creditsDeducted}, Remaining: ${result.remainingCredits}`);
+        }
+      }
     } catch (error: any) {
       console.error("Failed to save session:", error);
-      // Don't block closing if save fails, but show error
+      // Show error but don't block closing
+      setTermination(`Save error: ${error.message}`);
     } finally {
-      // Always close after attempting to save
+      // Close modal after showing result
       setTimeout(() => {
         resetCallState();
         onClose();
-      }, 2000); // Give user time to see the result message
+      }, 3000);
     }
-  }, [callState, status, endSession, saveSession, resetCallState, onClose]);
+  }, [callState, user, projectId, conversationMessages, endSession, setProfile, onClose, resetCallState, buildTranscript, status]);
 
   const forceClose = useCallback(() => {
     console.log('Force closing modal');
-    
-    const shouldForceClose = window.confirm(
-      "Are you sure you want to force close? This will end the session without saving your practice data."
-    );
-    
-    if (!shouldForceClose) return;
-    
     isProcessingEndRef.current = true;
     
     try {
@@ -297,24 +248,19 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
   }, [endSession, resetCallState, onClose, status]);
 
   const handleClose = useCallback(() => {
-    if (callState === 'connected') {
+    if (callState === 'connected' || callState === 'ending') {
       const shouldClose = window.confirm(
-        "You're currently in a call. Closing will end and save your session. Continue?"
+        "You're currently in a call. Are you sure you want to close without saving? This will end the session immediately."
       );
       if (shouldClose) {
-        endCallAndSave();
+        forceClose();
       }
-      return;
-    }
-    
-    if (callState === 'ending' || isAnalyzing) {
-      // Don't allow closing while processing
       return;
     }
     
     resetCallState();
     onClose();
-  }, [callState, isAnalyzing, endCallAndSave, resetCallState, onClose]);
+  }, [callState, forceClose, resetCallState, onClose]);
 
   // Credit monitoring with grace period
   useEffect(() => {
@@ -335,7 +281,7 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
           
           if (userProfile.credits <= creditsToDeduct) {
             console.log('Credit limit reached, ending call');
-            setTermination('Credit limit reached - ending call');
+            setTermination('Credit limit reached');
             endCallAndSave();
           }
         }
@@ -375,23 +321,23 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
     }
   }, [isOpen, resetCallState]);
 
+  // Auto-close on disconnect if not manually ending
+  useEffect(() => {
+    if (status === 'disconnected' && callState === 'connected' && !isProcessingEndRef.current) {
+      console.log('Auto-saving on disconnect');
+      endCallAndSave();
+    }
+  }, [status, callState, endCallAndSave]);
+
   if (!isOpen) {
     return null;
   }
 
   const getStatusContent = () => {
-    if (isAnalyzing) {
-      return (
-        <div className="flex items-center text-blue-600">
-          <Loader className="animate-spin mr-2" /> Analyzing session and saving...
-        </div>
-      );
-    }
-    
     if (callState === 'ending') {
       return (
         <div className="flex items-center text-yellow-600">
-          <Loader className="animate-spin mr-2" /> Ending call...
+          <Loader className="animate-spin mr-2" /> Ending call and saving...
         </div>
       );
     }
@@ -440,10 +386,6 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
             You are about to start a practice session for a "{project?.detectedUseCase}".
             <br />
             Ensure you are in a quiet environment with microphone access.
-            <br />
-            <span className="text-sm text-yellow-600">
-              Cost: {CREDITS_PER_MINUTE} credits per minute (first {CREDIT_GRACE_PERIOD} seconds free)
-            </span>
           </p>
           <Button 
             onClick={startCall} 
@@ -507,12 +449,10 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
               onClick={endCallAndSave} 
               variant="destructive" 
               className="flex-1"
-              disabled={callState === 'ending' || isAnalyzing}
+              disabled={callState === 'ending'}
             >
-              {callState === 'ending' || isAnalyzing ? (
-                <><Loader className="animate-spin mr-2 h-4 w-4" /> 
-                  {isAnalyzing ? 'Saving...' : 'Ending...'}
-                </>
+              {callState === 'ending' ? (
+                <><Loader className="animate-spin mr-2 h-4 w-4" /> Ending...</>
               ) : (
                 <><PhoneOff className="mr-2 h-4 w-4" /> End & Save Session</>
               )}
@@ -521,17 +461,11 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
               onClick={forceClose} 
               variant="outline" 
               size="sm"
-              disabled={callState === 'ending' || isAnalyzing}
+              disabled={callState === 'ending'}
             >
               Force Close
             </Button>
           </div>
-          
-          {callBeganRef.current && (
-            <div className="mt-2 text-xs text-muted-foreground text-center">
-              Session duration: {Math.floor((Date.now() - callBeganRef.current) / 1000)}s
-            </div>
-          )}
         </div>
       </>
     );
@@ -547,7 +481,7 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
               variant="ghost" 
               size="icon" 
               onClick={handleClose}
-              disabled={callState === 'ending' || isAnalyzing}
+              disabled={callState === 'ending'}
             >
               <X className="h-4 w-4" />
             </Button>
