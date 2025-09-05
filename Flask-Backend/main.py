@@ -165,24 +165,45 @@ def analyze_transcript_with_gemini(uid, project_id, transcript, duration_seconds
         if not project_data: raise ValueError("Project not found for analysis.")
         use_case = project_data.get('detectedUseCase', 'General')
         context_text = project_data.get('key_points', project_data.get('originalBriefingText', ''))
+        
+        # --- NEW, MORE ROBUST PROMPT ---
         prompt = f"""
-        You are an expert performance coach. The user was practicing for a mock '{use_case}'.
-        Their session was based on a document with these key points: "{context_text}"
-        
-        Your task is to analyze the following transcript. Your analysis must be a valid JSON object.
-        Evaluate on: Communication Skills, Content Mastery, Engagement & Delivery, and Resilience Under Pressure.
-        
-        Provide: A score (0-100) for each, "qualitativeStrengths", "qualitativeImprovements", and "contextSpecificFeedback".
-        
+        You are an expert performance coach and communication analyst. Your task is to analyze the following transcript of a mock '{use_case}'.
+        The user's session was based on a document with these key points: "{context_text}"
+
+        Your analysis must be structured as a valid JSON object. Do not include any text before or after the JSON object.
+
+        **Step 1: Substance Gatekeeper Analysis**
+        First, determine if the transcript contains a substantive conversation. A substantive conversation involves at least one meaningful question from the AI and one meaningful answer from the user. A transcript with only greetings (e.g., "Hello", "Hi there") or a single unanswered question is NOT substantive.
+        - If the conversation is NOT substantive, you MUST return a JSON object where all scores are 5, and the feedback fields explain that the session was too short to analyze.
+        - If the conversation IS substantive, proceed to Step 2.
+
+        **Step 2: Detailed Performance Evaluation**
+        Evaluate the user's performance on these four core criteria. Your evaluation must consider the DEPTH and COMPLETENESS of the user's responses.
+
+        1.  **Communication Skills:** Score based on clarity, confidence, and conciseness. A high score requires more than just a single clear sentence; it requires sustained clarity throughout a meaningful exchange.
+        2.  **Content Mastery:** Score based on subject knowledge and logical support for claims. A user who doesn't answer any core questions CANNOT receive a high score, no matter how well they greet the interviewer.
+        3.  **Engagement & Delivery:** Score based on tone, pacing, and audience awareness. This can only be judged in a real back-and-forth conversation, not from a simple greeting.
+        4.  **Resilience Under Pressure:** Score based on the ability to handle challenging follow-up questions. If no such questions were asked or answered, this score should be low by default.
+
+        **Penalty Clause:** Explicitly penalize short or incomplete sessions. If the user only answered one question and then the call ended, their scores should be significantly lower than if they had completed a full, multi-question session.
+
         The JSON structure MUST be:
         {{
-          "communicationScore": <integer>, "contentMasteryScore": <integer>, "engagementDeliveryScore": <integer>,
-          "resilienceScore": <integer>, "qualitativeStrengths": "<string>", "qualitativeImprovements": "<string>",
+          "communicationScore": <integer>,
+          "contentMasteryScore": <integer>,
+          "engagementDeliveryScore": <integer>,
+          "resilienceScore": <integer>,
+          "qualitativeStrengths": "<string>",
+          "qualitativeImprovements": "<string>",
           "contextSpecificFeedback": "<string>"
         }}
-        
-        Transcript: "{transcript}"
+
+        Transcript to analyze:
+        "{transcript}"
         """
+        # --- END OF NEW PROMPT ---
+
         response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
         feedback_json_text = response.text.strip().lstrip("```json").rstrip("```")
         feedback_data = json.loads(feedback_json_text)
