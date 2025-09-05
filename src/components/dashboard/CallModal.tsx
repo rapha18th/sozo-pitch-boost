@@ -152,29 +152,8 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
     }
 
     try {
-      // Fetch briefing data
-      const token = await user.getIdToken();
-      const briefingData = await apiClient.getAgentBriefing(token, projectId);
-      console.log('Briefing data loaded');
-
-      const vars = {
-        user_name: user.displayName || 'User',
-        user_credits: String(userProfile.credits),
-        memory_summary: briefingData.briefing || '',
-        project_title: project.title || '',
-        project_short_description: project.originalBriefingText?.substring(0, 200) || '',
-        project_key_points: project.originalBriefingText || '',
-        pitch_persona_description: generatePitchPersonaDescription(project.detectedUseCase),
-      };
-
-      console.log('Starting session with variables:', vars);
-      
-      // Get agent URL first
-      const urlResponse = await apiClient.getAgentUrl(token);
-      
-      await startSession({ 
-        signedUrl: urlResponse.signed_url,
-        dynamicVariables: vars 
+      await startSession({
+        conversationToken: "temp-token"
       });
     } catch (error: any) {
       console.error("Failed to start session:", error);

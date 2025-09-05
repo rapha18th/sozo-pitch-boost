@@ -46,9 +46,8 @@ const ProjectDetail = () => {
     if (!user || !id) return;
     setLoadingBriefing(true);
     try {
-      const token = await user.getIdToken();
-      const briefingData = await apiClient.getAgentBriefing(token, id);
-      setBriefing(briefingData.briefing);
+      // Briefing generation temporarily disabled
+      setBriefing("Briefing generation is temporarily disabled. You can still start practice sessions using your original project briefing.");
     } catch (error) {
       console.error("Failed to generate briefing", error);
       toast({ title: 'Failed to generate briefing.', variant: 'destructive' });
