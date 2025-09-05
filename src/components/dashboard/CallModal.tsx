@@ -39,7 +39,8 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
     startSession,
     endSession,
     status,
-    isSpeaking
+    isSpeaking,
+    error: sdkError
   } = useConversation({
     onConnect: () => {
       console.log("Connected to conversation");
@@ -61,8 +62,7 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
     },
     onError: (error) => {
       console.error("Conversation error:", error);
-      const errorMessage = typeof error === 'string' ? error : (error as any)?.message || 'Connection failed';
-      setConnErr(errorMessage);
+      setConnErr(error.message);
       setCallState('idle');
     },
     onDisconnect: () => {
@@ -152,8 +152,25 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
     }
 
     try {
-      await startSession({
-        conversationToken: "temp-token"
+      // Fetch briefing data
+      const token = await user.getIdToken();
+      const briefingData = await apiClient.getAgentBriefing(token, projectId);
+      console.log('Briefing data loaded');
+
+      const vars = {
+        user_name: user.displayName || 'User',
+        user_credits: String(userProfile.credits),
+        memory_summary: briefingData.briefing || '',
+        project_title: project.title || '',
+        project_short_description: project.short_description || '',
+        project_key_points: project.key_points || '',
+        pitch_persona_description: generatePitchPersonaDescription(project.detectedUseCase),
+      };
+
+      console.log('Starting session with variables:', vars);
+      await startSession({ 
+        agentId: 'agent_2201k4ant3h5fmdshkhnpary29wp',
+        dynamicVariables: vars 
       });
     } catch (error: any) {
       console.error("Failed to start session:", error);
@@ -280,6 +297,15 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
       };
     }
   }, [callState, userProfile, endCallAndSave]);
+
+  // Handle SDK errors
+  useEffect(() => {
+    if (sdkError) {
+      console.error("SDK Error:", sdkError);
+      setConnErr(sdkError.message);
+      setCallState('idle');
+    }
+  }, [sdkError]);
 
   // Cleanup on unmount
   useEffect(() => {
