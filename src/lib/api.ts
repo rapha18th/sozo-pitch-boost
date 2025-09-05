@@ -167,6 +167,29 @@ class ApiClient {
     return response.json();
   }
 
+  async getAgentBriefing(token: string, projectId: string): Promise<{ briefing: string }> {
+    const response = await fetch(`${BASE_URL}/api/projects/${projectId}/briefing`, {
+      method: 'GET',
+      headers: this.getAuthHeaders(token),
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Failed to get agent briefing');
+    }
+    return response.json();
+  }
+
+  async getAgentUrl(token: string): Promise<{ signed_url: string }> {
+    const response = await fetch(`${BASE_URL}/api/ai/get-agent-url`, {
+      method: 'GET',
+      headers: this.getAuthHeaders(token),
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Failed to get agent URL');
+    }
+    return response.json();
+  }
 
   async endSession(token: string, projectId: string, data: { durationSeconds: number; transcript: string }): Promise<EndSessionResponse> {
     const response = await fetch(`${BASE_URL}/api/projects/${projectId}/sessions/end`, {
@@ -182,7 +205,7 @@ class ApiClient {
   }
 
   async getSessionDetails(token: string, projectId: string, sessionId: string): Promise<Session> {
-    const response = await fetch(`${BASE_URL}/api/projects/${projectId}/sessions/${sessionId}`, {
+    const response = await fetch(`${BASE_URL}/api/projects/${projectId}/practiceSessions/${sessionId}`, {
       method: 'GET',
       headers: this.getAuthHeaders(token),
     });
