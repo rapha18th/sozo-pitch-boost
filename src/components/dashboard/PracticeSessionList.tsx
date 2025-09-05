@@ -2,8 +2,8 @@ import React from 'react';
 import { Session } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import SessionDetailModal from './SessionDetailModal';
 
 interface PracticeSessionListProps {
   sessions: Record<string, Session>;
@@ -45,9 +45,9 @@ const PracticeSessionList: React.FC<PracticeSessionListProps> = ({ sessions, pro
                 <TableCell>{session.feedback?.engagementDeliveryScore ?? 'N/A'}</TableCell>
                 <TableCell>{session.feedback?.resilienceScore ?? 'N/A'}</TableCell>
                 <TableCell>
-                  <Link to={`/project/${projectId}/session/${session.sessionId}`}>
+                  <SessionDetailModal session={session}>
                     <Button variant="outline" size="sm">View Details</Button>
-                  </Link>
+                  </SessionDetailModal>
                 </TableCell>
               </TableRow>
             ))}

@@ -103,20 +103,7 @@ const ProjectDetail = () => {
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-            <Card className="p-6">
-              <Collapsible>
-                <CollapsibleTrigger asChild>
-                  <Button variant="link" className="p-0 mb-4">
-                    <h2 className="text-2xl font-bold text-deep-navy">Original Briefing</h2>
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <p className="text-steel-grey whitespace-pre-wrap">{project.originalBriefingText}</p>
-                </CollapsibleContent>
-              </Collapsible>
-            </Card>
-
+          <div className="lg:col-span-2 space-y-8">
             <PracticeSessionList sessions={project.practiceSessions} projectId={project.projectId} />
           </div>
 
