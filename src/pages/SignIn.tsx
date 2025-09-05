@@ -110,9 +110,22 @@ const SignIn = () => {
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Google sign in error:", error);
+      
+      let errorMessage = "Something went wrong. Please try again.";
+      
+      if (error.code === 'auth/popup-closed-by-user') {
+        errorMessage = "Sign in cancelled. Please try again.";
+      } else if (error.code === 'auth/popup-blocked') {
+        errorMessage = "Popup blocked. Please allow popups and try again.";
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        errorMessage = "Sign in cancelled. Please try again.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Google sign in failed",
-        description: error.message || "Something went wrong. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
