@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { UserProfile } from '@/lib/api';
+import { UserProfile, apiClient } from '@/lib/api';
 
 interface AuthContextType {
   user: User | null;
@@ -27,9 +27,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
-      if (!user) {
+      if (user) {
+        try {
+          const token = await user.getIdToken();
+          const userProfile = await apiClient.getUserProfile(token);
+          setProfile(userProfile);
+        } catch (error) {
+          console.error("Failed to fetch user profile:", error);
+          // Handle profile fetch error, maybe sign out the user
+          setProfile(null);
+        }
+      } else {
         setProfile(null);
       }
       setLoading(false);
