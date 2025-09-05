@@ -20,9 +20,11 @@ const Header = () => {
     setLoading(true);
     
     try {
+      console.log('Starting Google sign in from Header...');
       const result = await signInWithPopup(auth, googleProvider);
       const token = await result.user.getIdToken();
       
+      console.log('Calling syncProfile API...');
       const profile = await apiClient.syncProfile(token);
       
       setProfile(profile);

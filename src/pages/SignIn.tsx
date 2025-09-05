@@ -96,9 +96,11 @@ const SignIn = () => {
     setLoading(true);
     
     try {
+      console.log('Starting Google sign in from SignIn page...');
       const result = await signInWithPopup(auth, googleProvider);
       const token = await result.user.getIdToken();
       
+      console.log('Calling syncProfile API...');
       const profile = await apiClient.syncProfile(token);
       
       setProfile(profile);
