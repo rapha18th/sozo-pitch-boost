@@ -205,7 +205,7 @@ class ApiClient {
   }
 
   async getSessionDetails(token: string, projectId: string, sessionId: string): Promise<Session> {
-    const response = await fetch(`${BASE_URL}/api/projects/${projectId}/practiceSessions/${sessionId}`, {
+    const response = await fetch(`${BASE_URL}/api/projects/${projectId}/sessions/${sessionId}`, {
       method: 'GET',
       headers: this.getAuthHeaders(token),
     });
