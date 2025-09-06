@@ -40,11 +40,11 @@ We chose a modern, decoupled architecture for security, scalability, and intelli
 
 ```mermaid
 graph TD
-    subgraph Client Side (Browser)
-        A1["<b>User Interface</b><br/>React + Vite + Tailwind<br/><i>Provides all user views, forms, and reports.</i>"]
-        A2["<b>User Actions</b><br/>(Upload, Start/End Session)<br/><i>Triggers API calls via the API Client.</i>"]
-        A3["<b>Unified API Client (api.ts)</b><br/><i>Manages all secure communication with the backend.</i>"]
-        A4["<b>ElevenLabs React SDK</b><br/><i>Handles the real-time, low-latency voice connection.</i>"]
+    subgraph Client_Side_Browser ["Client Side (Browser)"]
+        A1["User Interface<br/>React + Vite + Tailwind<br/><i>Provides all user views, forms, and reports.</i>"]
+        A2["User Actions<br/>(Upload, Start/End Session)<br/><i>Triggers API calls via the API Client.</i>"]
+        A3["Unified API Client (api.ts)<br/><i>Manages all secure communication with the backend.</i>"]
+        A4["ElevenLabs React SDK<br/><i>Handles the real-time, low-latency voice connection.</i>"]
 
         A1 --> A2
         A2 --> A3
@@ -52,19 +52,19 @@ graph TD
     end
 
     subgraph Backend
-        C1["<b>Flask Backend</b><br/><i>Hosts all API endpoints and business logic.</i>"]
-        C2["<b>Firebase Admin SDK</b><br/><i>Verifies user tokens and manages all database operations.</i>"]
-        C3["<b>AI Orchestration Logic</b><br/><i>Manages multi-step Gemini prompts for context and analysis.</i>"]
+        C1["Flask Backend<br/><i>Hosts all API endpoints and business logic.</i>"]
+        C2["Firebase Admin SDK<br/><i>Verifies user tokens and manages all database operations.</i>"]
+        C3["AI Orchestration Logic<br/><i>Manages multi-step Gemini prompts for context and analysis.</i>"]
 
         C1 --> C2
         C1 --> C3
     end
 
-    subgraph Cloud & External Services
-        D1["<b>Firebase Authentication</b><br/><i>Securely handles user sign-in and identity management.</i>"]
-        D2["<b>Firebase Realtime Database</b><br/><i>Stores all application data (profiles, projects, sessions).</i>"]
-        D4["<b>Google Gemini API</b><br/><i>The engine for summarization, classification, and feedback generation.</i>"]
-        D6["<b>ElevenLabs Conversational AI API</b><br/><i>Provides the real-time, voice-based AI agent.</i>"]
+    subgraph Cloud_External_Services ["Cloud & External Services"]
+        D1["Firebase Authentication<br/><i>Securely handles user sign-in and identity management.</i>"]
+        D2["Firebase Realtime Database<br/><i>Stores all application data (profiles, projects, sessions).</i>"]
+        D4["Google Gemini API<br/><i>The engine for summarization, classification, and feedback generation.</i>"]
+        D6["ElevenLabs Conversational AI API<br/><i>Provides the real-time, voice-based AI agent.</i>"]
     end
 
     A3 -- "Sends API Requests" --> C1
@@ -74,7 +74,6 @@ graph TD
     C2 -- "Reads/Writes Data" --> D2
     C3 -- "Sends Prompts" --> D4
 ```
-
 # 🚀 Getting Started
 To get a local copy up and running, follow these simple steps.
 
