@@ -39,7 +39,8 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
     startSession,
     endSession,
     status,
-    isSpeaking
+    isSpeaking,
+    error: sdkError
   } = useConversation({
     onConnect: () => {
       console.log("Connected to conversation");
@@ -59,9 +60,9 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
       };
       setConversationMessages(prev => [...prev, newMessage]);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       console.error("Conversation error:", error);
-      setConnErr(typeof error === 'string' ? error : error?.message || 'Connection error');
+      setConnErr(error.message);
       setCallState('idle');
     },
     onDisconnect: () => {
@@ -165,10 +166,10 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
       };
 
       console.log('Starting session with variables:', vars);
-      // For public agents, we need to use the agentId directly
       await startSession({ 
-        agentId: 'agent_2901k4dhxkmzfcpvzpe08xt956sz'
-      } as any);
+        agentId: 'agent_2901k4dhxkmzfcpvzpe08xt956sz',
+        dynamicVariables: vars 
+      });
     } catch (error: any) {
       console.error("Failed to start session:", error);
       setConnErr(`Failed to start session: ${error.message}`);
@@ -295,7 +296,14 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
     }
   }, [callState, userProfile, endCallAndSave]);
 
-  // SDK errors are handled through onError callback
+  // Handle SDK errors
+  useEffect(() => {
+    if (sdkError) {
+      console.error("SDK Error:", sdkError);
+      setConnErr(sdkError.message);
+      setCallState('idle');
+    }
+  }, [sdkError]);
 
   // Cleanup on unmount
   useEffect(() => {
