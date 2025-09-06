@@ -1,4 +1,5 @@
 import { Upload, MessageSquare, BarChart3 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const HowItWorks = () => {
   const steps = [
@@ -78,9 +79,11 @@ const HowItWorks = () => {
             Ready in under 2 minutes
           </div>
           <div>
-            <button className="bg-deep-navy hover:bg-deep-navy/90 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-smooth">
-              Start Your First Practice Session
-            </button>
+            <Link to="/signup">
+              <button className="bg-deep-navy hover:bg-deep-navy/90 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-smooth">
+                Start Your First Practice Session
+              </button>
+            </Link>
           </div>
         </div>
       </div>

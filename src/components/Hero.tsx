@@ -18,7 +18,7 @@ const Hero = () => {
             Get personalized feedback and improve your performance before the real thing.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+          <div className="flex justify-center items-center mb-12">
             <Link to="/signup">
               <Button
                 size="lg"
@@ -28,15 +28,6 @@ const Hero = () => {
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-            
-            <Button 
-              variant="outline" 
-              size="lg"
-              className="border-white/30 text-white hover:bg-white/10 px-8 py-4 text-lg bg-transparent"
-            >
-              <Play className="mr-2 h-5 w-5" />
-              Watch Demo
-            </Button>
           </div>
 
           {/* Trust indicators */}
