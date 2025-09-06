@@ -217,11 +217,6 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, onSessionComplet
           
           // Show success message
           setTermination(`Session saved! Session ID: ${result.sessionId}, Credits deducted: ${result.creditsDeducted}, Remaining: ${result.remainingCredits}`);
-          
-          // Trigger refresh of practice sessions
-          if (onSessionComplete) {
-            onSessionComplete();
-          }
         }
       }
     } catch (error: any) {
@@ -232,6 +227,9 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, onSessionComplet
       // Close modal after showing result
       setTimeout(() => {
         resetCallState();
+        if (onSessionComplete) {
+          onSessionComplete();
+        }
         onClose();
       }, 3000);
     }
