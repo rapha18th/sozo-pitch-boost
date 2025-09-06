@@ -133,6 +133,7 @@ const ProjectDetail = () => {
         <CallModal
           isOpen={isCallModalOpen}
           onClose={() => setIsCallModalOpen(false)}
+          onSessionComplete={fetchProject}
           projectId={project.projectId}
           project={project}
         />

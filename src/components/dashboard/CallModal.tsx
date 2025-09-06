@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 interface CallModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSessionComplete?: () => void;
   projectId: string;
   project: Project | null;
 }
@@ -24,7 +25,7 @@ type CallState = 'idle' | 'connecting' | 'connected' | 'ending' | 'ended';
 const CREDITS_PER_MINUTE = 3;
 const CREDIT_GRACE_PERIOD = 59; // seconds before docking first credit
 
-const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, project }) => {
+const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, onSessionComplete, projectId, project }) => {
   const { user, profile: userProfile, setProfile } = useAuth();
   const [callState, setCallState] = useState<CallState>('idle');
   const [conversationMessages, setConversationMessages] = useState<ConversationMessage[]>([]);
@@ -216,6 +217,11 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
           
           // Show success message
           setTermination(`Session saved! Session ID: ${result.sessionId}, Credits deducted: ${result.creditsDeducted}, Remaining: ${result.remainingCredits}`);
+          
+          // Trigger refresh of practice sessions
+          if (onSessionComplete) {
+            onSessionComplete();
+          }
         }
       }
     } catch (error: any) {
@@ -229,7 +235,7 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, projectId, proje
         onClose();
       }, 3000);
     }
-  }, [callState, user, projectId, conversationMessages, endSession, setProfile, onClose, resetCallState, buildTranscript, status]);
+  }, [callState, user, projectId, conversationMessages, endSession, setProfile, onClose, onSessionComplete, resetCallState, buildTranscript, status]);
 
   const forceClose = useCallback(() => {
     console.log('Force closing modal');
