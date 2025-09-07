@@ -1,13 +1,13 @@
 # Sozo Pitch Helper 🚀
 
-[![Netlify Status](https://api.netlify.com/api/v1/badges/your-netlify-badge-id/deploy-status)](https://app.netlify.com/sites/pitchhelper/deploys)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/bda04774-48ce-42b2-b356-bd872872f7b3/deploy-status)](https://app.netlify.com/projects/pitchhelper/deploys)
 
 An AI-powered training platform that transforms how you prepare for high-stakes interviews, pitches, and presentations.
 
 **🔴 Live Demo: [https://pitchhelper.netlify.app](https://pitchhelper.netlify.app)**
 
-<!-- TODO: Replace this with a high-quality GIF of the app in action -->
-<img src="https://i.imgur.com/7b5Qy9f.png" alt="Sozo Pitch Helper Session Analysis" width="100%">
+### video demo
+[![Youtube Video]()](https://youtu.be/VtN_JUr7Yi8?si=apsshv7tDFiE4OFs)>
 
 ---
 
@@ -88,6 +88,7 @@ To get a local copy up and running, follow these simple steps.
 
 ### Clone the repo
     git clone https://github.com/rapha18th/sozo-pitch-boost.git
+    
     cd sozo-pitch-boost
 
 ### Setup the Frontend
@@ -95,7 +96,7 @@ To get a local copy up and running, follow these simple steps.
     npm install
     cp .env.example .env.local
 
-Fill in your Firebase project configuration in `.env.local`.
+Fill in your Firebase project configuration in `.env.local`. or replace firebase.ts with your config
 
 ### Setup the Backend
     cd ../Flask-Backend
