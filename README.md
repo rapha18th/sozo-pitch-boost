@@ -6,8 +6,7 @@ An AI-powered training platform that transforms how you prepare for high-stakes 
 
 **🔴 Live Demo: [https://pitchhelper.netlify.app](https://pitchhelper.netlify.app)**
 
-### video demo
-[![Youtube Video]()](https://youtu.be/VtN_JUr7Yi8?si=apsshv7tDFiE4OFs)>
+
 
 ---
 
