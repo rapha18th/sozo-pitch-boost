@@ -64,13 +64,18 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, onSessionComplet
     onError: (error) => {
       console.error("Conversation error:", error);
       setConnErr(error.message);
-      setCallState('idle');
+      // Save before setting to idle
+      if (callBeganRef.current && !isProcessingEndRef.current) {
+        saveSessionData('Error occurred');
+      } else {
+        setCallState('idle');
+      }
     },
     onDisconnect: () => {
       console.log("Conversation disconnected");
-      if (!isProcessingEndRef.current) {
-        setTermination('The assistant ended the call');
-        setCallState('idle');
+      if (!isProcessingEndRef.current && callBeganRef.current) {
+        // Assistant or abrupt disconnect - save the session
+        saveSessionData('The assistant ended the call');
       }
     }
   });
@@ -124,6 +129,63 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, onSessionComplet
       return false;
     }
   };
+
+  const saveSessionData = useCallback(async (reason: string) => {
+    if (isProcessingEndRef.current) {
+      return;
+    }
+
+    console.log(`Saving session data. Reason: ${reason}`);
+    isProcessingEndRef.current = true;
+    setCallState('ending');
+
+    try {
+      // Stop the session if still connected
+      if (status === 'connected') {
+        endSession();
+      }
+
+      // Save session data if we have a valid call
+      if (callBeganRef.current && user && conversationMessages.length > 0) {
+        const durationSeconds = Math.round((Date.now() - callBeganRef.current) / 1000);
+        
+        if (durationSeconds > 0) {
+          const transcript = buildTranscript(conversationMessages);
+          console.log(`Saving session: ${durationSeconds}s duration, ${conversationMessages.length} messages`);
+
+          const token = await user.getIdToken();
+          
+          // Save session using the backend endpoint
+          const result = await apiClient.endSession(token, projectId, { 
+            durationSeconds, 
+            transcript 
+          });
+          
+          console.log('Session saved successfully:', result);
+
+          // Update user profile to reflect new credits
+          const updatedProfile = await apiClient.getUserProfile(token);
+          setProfile(updatedProfile);
+          
+          // Show success message
+          setTermination(`Session saved! Session ID: ${result.sessionId}, Credits deducted: ${result.creditsDeducted}, Remaining: ${result.remainingCredits}`);
+        }
+      }
+    } catch (error: any) {
+      console.error("Failed to save session:", error);
+      // Show error but don't block closing
+      setTermination(`Save error: ${error.message}`);
+    } finally {
+      // Close modal after showing result
+      setTimeout(() => {
+        resetCallState();
+        if (onSessionComplete) {
+          onSessionComplete();
+        }
+        onClose();
+      }, 3000);
+    }
+  }, [user, projectId, conversationMessages, endSession, setProfile, onClose, onSessionComplete, resetCallState, buildTranscript, status]);
 
   const startCall = async () => {
     if (callState !== 'idle') return;
@@ -183,57 +245,9 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, onSessionComplet
       return;
     }
 
-    console.log('Ending call and saving...');
-    isProcessingEndRef.current = true;
-    setCallState('ending');
-
-    try {
-      // Stop the session first
-      if (status === 'connected') {
-        endSession();
-      }
-
-      // Save session data if we have a valid call
-      if (callBeganRef.current && user && conversationMessages.length > 0) {
-        const durationSeconds = Math.round((Date.now() - callBeganRef.current) / 1000);
-        
-        if (durationSeconds > 0) {
-          const transcript = buildTranscript(conversationMessages);
-          console.log(`Saving session: ${durationSeconds}s duration, ${conversationMessages.length} messages`);
-
-          const token = await user.getIdToken();
-          
-          // Save session using the backend endpoint
-          const result = await apiClient.endSession(token, projectId, { 
-            durationSeconds, 
-            transcript 
-          });
-          
-          console.log('Session saved successfully:', result);
-
-          // Update user profile to reflect new credits
-          const updatedProfile = await apiClient.getUserProfile(token);
-          setProfile(updatedProfile);
-          
-          // Show success message
-          setTermination(`Session saved! Session ID: ${result.sessionId}, Credits deducted: ${result.creditsDeducted}, Remaining: ${result.remainingCredits}`);
-        }
-      }
-    } catch (error: any) {
-      console.error("Failed to save session:", error);
-      // Show error but don't block closing
-      setTermination(`Save error: ${error.message}`);
-    } finally {
-      // Close modal after showing result
-      setTimeout(() => {
-        resetCallState();
-        if (onSessionComplete) {
-          onSessionComplete();
-        }
-        onClose();
-      }, 3000);
-    }
-  }, [callState, user, projectId, conversationMessages, endSession, setProfile, onClose, onSessionComplete, resetCallState, buildTranscript, status]);
+    console.log('User ending call and saving...');
+    await saveSessionData('User ended the call');
+  }, [callState, saveSessionData]);
 
   const forceClose = useCallback(() => {
     console.log('Force closing modal');
@@ -285,8 +299,7 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, onSessionComplet
           
           if (userProfile.credits <= creditsToDeduct) {
             console.log('Credit limit reached, ending call');
-            setTermination('Credit limit reached');
-            endCallAndSave();
+            saveSessionData('Credit limit reached');
           }
         }
       }, 5000);
@@ -298,16 +311,20 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, onSessionComplet
         }
       };
     }
-  }, [callState, userProfile, endCallAndSave]);
+  }, [callState, userProfile, saveSessionData]);
 
   // Handle SDK errors
   useEffect(() => {
     if (sdkError) {
       console.error("SDK Error:", sdkError);
       setConnErr(sdkError.message);
-      setCallState('idle');
+      if (callBeganRef.current && !isProcessingEndRef.current) {
+        saveSessionData('SDK Error occurred');
+      } else {
+        setCallState('idle');
+      }
     }
-  }, [sdkError]);
+  }, [sdkError, saveSessionData]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -324,14 +341,6 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, onSessionComplet
       resetCallState();
     }
   }, [isOpen, resetCallState]);
-
-  // Auto-close on disconnect if not manually ending
-  useEffect(() => {
-    if (status === 'disconnected' && callState === 'connected' && !isProcessingEndRef.current) {
-      console.log('Auto-saving on disconnect');
-      endCallAndSave();
-    }
-  }, [status, callState, endCallAndSave]);
 
   if (!isOpen) {
     return null;
