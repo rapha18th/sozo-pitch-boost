@@ -230,7 +230,7 @@ const CallModal: React.FC<CallModalProps> = ({ isOpen, onClose, onSessionComplet
 
       console.log('Starting session with variables:', vars);
       await startSession({ 
-        agentId: 'agent_2901k4dhxkmzfcpvzpe08xt956sz',
+        agentId: 'agent_2001kbmhawh1f1j9yxvpfshkk0tf',
         dynamicVariables: vars 
       });
     } catch (error: any) {
